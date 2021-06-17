@@ -10,7 +10,7 @@ import com.bluelinelabs.conductor.Controller
 class ComposeController : Controller() {
 
     init {
-        ViewTreeLifecycleAndRegistryLifecycle.own(this)
+        OwnViewTreeLifecycleAndRegistry.own(this)
     }
 
     override fun onCreateView(

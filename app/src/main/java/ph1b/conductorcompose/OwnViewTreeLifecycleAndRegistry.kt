@@ -2,7 +2,6 @@ package ph1b.conductorcompose
 
 import android.content.Context
 import android.os.Bundle
-import android.util.Log
 import android.view.View
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -14,30 +13,36 @@ import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.ViewTreeSavedStateRegistryOwner
 import com.bluelinelabs.conductor.Controller
 
-internal class ViewTreeLifecycleAndRegistryLifecycle
+internal class OwnViewTreeLifecycleAndRegistry
 private constructor(controller: Controller) : LifecycleOwner, SavedStateRegistryOwner {
 
-    private val lifecycleRegistry = LifecycleRegistry(this)
+    private lateinit var lifecycleRegistry: LifecycleRegistry
 
-    private val savedStateRegistryController = SavedStateRegistryController.create(this)
+    private lateinit var savedStateRegistryController: SavedStateRegistryController
 
     private var handlingDestroyViaHostDetach = false
+
+    private var savedRegistryState = Bundle.EMPTY
+
+    private fun initLifecycle() {
+        lifecycleRegistry = LifecycleRegistry(this)
+        savedStateRegistryController = SavedStateRegistryController.create(this)
+    }
 
     init {
         controller.addLifecycleListener(object : Controller.LifecycleListener() {
 
             override fun postContextAvailable(controller: Controller, context: Context) {
-                if (!savedStateRegistryController.savedStateRegistry.isRestored) {
-                    savedStateRegistryController.performRestore(null)
-                }
+                initLifecycle()
+                savedStateRegistryController.performRestore(savedRegistryState)
                 lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
             }
 
             override fun postCreateView(controller: Controller, view: View) {
-                ViewTreeLifecycleOwner.set(view, this@ViewTreeLifecycleAndRegistryLifecycle)
+                ViewTreeLifecycleOwner.set(view, this@OwnViewTreeLifecycleAndRegistry)
                 ViewTreeSavedStateRegistryOwner.set(
                     view,
-                    this@ViewTreeLifecycleAndRegistryLifecycle
+                    this@OwnViewTreeLifecycleAndRegistry
                 )
                 lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
             }
@@ -55,8 +60,8 @@ private constructor(controller: Controller) : LifecycleOwner, SavedStateRegistry
             }
 
             override fun onSaveViewState(controller: Controller, outState: Bundle) {
-                savedStateRegistryController.performSave(outState)
-                Log.d("onSaveViewState", "saved $outState")
+                savedRegistryState = Bundle()
+                savedStateRegistryController.performSave(savedRegistryState)
             }
 
             override fun onRestoreInstanceState(
@@ -101,7 +106,7 @@ private constructor(controller: Controller) : LifecycleOwner, SavedStateRegistry
 
     companion object {
         fun own(target: Controller) {
-            ViewTreeLifecycleAndRegistryLifecycle(target)
+            OwnViewTreeLifecycleAndRegistry(target)
         }
     }
 }
